@@ -11,7 +11,29 @@ public class ResourceController : MonoBehaviour
 
     private ResourceConfig _config;
 
-    private int _level = 1;
+    
+    private int _index;
+    private int _level
+    {
+        set
+        {
+            // untuk menyimpan value yang di set ke _level pada progress data
+            UserDataManager.Progress.ResourcesLevels[_index] = value;
+            UserDataManager.Save();
+        }
+        get
+        {
+            // untuk mengecek apakah index sudah terdapat pada progress data
+            if(!UserDataManager.HasResources(_index))
+            {
+                // untuk jika tidak maka tampilkan level 1
+                return 1;
+            }
+            // untuk jika iya maka tampilkan berdasarkan Progress data
+            return UserDataManager.Progress.ResourcesLevels[_index];
+            
+        }
+    }
 
     public bool IsUnlocked { get; private set; }
 
@@ -30,8 +52,9 @@ public class ResourceController : MonoBehaviour
         });
     }
 
-    public void SetConfig (ResourceConfig config)
+    public void SetConfig (int index, ResourceConfig config)
     {
+        _index = index;
         _config = config;
 
         // ToString("0") berfungsi untuk membuang angka di belakang koma
@@ -39,7 +62,7 @@ public class ResourceController : MonoBehaviour
         ResourceUnlockCost.text = $"Unlock Cost\n{ _config.UnlockCost }";
         ResourceUpgradeCost.text = $"Upgrade Cost\n{ GetUpgradeCost () }";
 
-        SetUnlocked (_config.UnlockCost == 0);
+        SetUnlocked (_config.UnlockCost == 0 || UserDataManager.HasResources(_index));
     }
 
     public double GetOutput ()
@@ -60,7 +83,7 @@ public class ResourceController : MonoBehaviour
     public void UpgradeLevel ()
     {
         double upgradeCost = GetUpgradeCost ();
-        if (GameManager.Instance.TotalGold < upgradeCost)
+        if (UserDataManager.Progress.Gold < upgradeCost)
         {
             return;
         }
@@ -75,7 +98,7 @@ public class ResourceController : MonoBehaviour
     public void UnlockResource ()
     {
         double unlockCost = GetUnlockCost ();
-        if (GameManager.Instance.TotalGold < unlockCost)
+        if (UserDataManager.Progress.Gold < unlockCost)
         {
             return;
         }
@@ -87,6 +110,16 @@ public class ResourceController : MonoBehaviour
 
     public void SetUnlocked (bool unlocked)
     {
+        IsUnlocked = unlocked;
+        if(unlocked)
+        {
+            // untuk jika resources baru di unlock dan belum ada di progress data, maka tambahkan data baru
+            if(!UserDataManager.HasResources(_index))
+            {
+                UserDataManager.Progress.ResourcesLevels.Add(_level);
+                UserDataManager.Save();
+            }
+        }
         IsUnlocked = unlocked;
         ResourceImage.color = IsUnlocked ? Color.white : Color.grey;
         ResourceUnlockCost.gameObject.SetActive (!unlocked);
